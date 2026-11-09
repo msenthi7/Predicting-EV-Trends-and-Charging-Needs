@@ -1,303 +1,85 @@
-# Watt's Next? Predicting EV Trends and Charging Needs
+# Watt's Next? Predicting EV Range and Mapping Adoption in Washington State
 
-A comprehensive data science project analyzing Electric Vehicle (EV) trends, predicting performance metrics, and identifying optimal charging infrastructure locations using machine learning and geospatial analysis.
+An end-to-end data science project on Washington State electric vehicle registrations, covering data cleaning, exploratory analysis, hypothesis testing, predictive modeling and geospatial mapping.
 
----
+**Team:** Abhishek Rithik Origanti and Matheshwara Annamalai Senthilkumar
 
-## 📊 Project Overview
+All code and outputs are in [`Tutorial.ipynb`](Tutorial.ipynb).
 
-Electric vehicles represent a transformative shift in the transportation industry, addressing critical global challenges including climate change, air pollution, and fossil fuel dependency. This project leverages data science techniques to unlock insights from EV adoption patterns, performance characteristics, and infrastructure requirements.
+## Main result
 
-### Key Objectives
+A tuned Random Forest raised held-out R² for electric range prediction from **0.776** with a linear baseline to **0.918**, using only model year and manufacturer as features.
 
-* **Analyze EV Performance:** Explore electric range trends across manufacturers and model years
-* **Test Hypotheses:** Validate assumptions about BEV vs PHEV performance and regional adoption patterns
-* **Build Predictive Models:** Forecast electric range and classify vehicle eligibility for incentives
-* **Market Segmentation:** Categorize EVs using clustering techniques for strategic insights
-* **Infrastructure Planning:** Identify regions requiring additional charging infrastructure
+## Data
 
----
+The source is the Washington electric vehicle population dataset from Kaggle (`Electric_Vehicle_Population_Data-2.csv`). The CSV is not stored in this repository.
 
-## 👥 Authors
+| Step | Rows | Columns |
+| --- | ---: | ---: |
+| Raw data | 216,772 | 17 |
+| Dropped 6 columns not used in the analysis | 216,772 | 11 |
+| Removed 124,101 rows with a range of 0 and 19 with no range | 92,652 | 11 |
+| Dropped remaining rows with missing values | 92,645 | 11 |
 
-* **Abhishek Rithik Origanti** (UID: 121305534)
-* **Matheswara Annamalai Senthilkumar** (UID: 121281500)
+Electric range was then min-max scaled to 0–1, so the error values in the notebook are on that scale.
 
----
+## Exploratory findings
 
-## 🚗 Dataset Information
+Within the 92,645 cleaned records:
 
-* **Size:** 216,772 rows × 17 columns
-* **Time Range:** Electric vehicles manufactured between 1999-2025
-* **Geographic Scope:** Primarily Washington State, USA
-* **Key Features:** Electric range, model year, manufacturer, vehicle type, location data
+- **Geography:** King County has 44,618 registrations, about 48% of the total. Snohomish County is next with 9,636. Seattle is the top city with 15,347.
+- **Manufacturers:** Tesla leads with 25,296 vehicles, followed by Nissan with 10,455 and Chevrolet with 9,756.
+- **Models:** The Tesla Model 3 (13,726) and Nissan Leaf (10,455) are the most common.
+- **Incentive eligibility:** 76.4% of vehicles are eligible for Clean Alternative Fuel Vehicle (CAFV) status (70,823 eligible, 21,822 not eligible).
 
-### Dataset Columns
+## Hypothesis tests
 
-| Column                | Description                        | Usage                   |
-| --------------------- | ---------------------------------- | ----------------------- |
-| Electric Range        | Maximum electric-only range        | Primary target variable |
-| Model Year            | Vehicle manufacturing year         | Trend analysis          |
-| Make/Model            | Manufacturer and model             | Performance comparison  |
-| Electric Vehicle Type | BEV vs PHEV classification         | Classification tasks    |
-| CAFV Eligibility      | Clean Air Vehicle incentive status | Prediction target       |
-| Geographic Data       | County, City, State, Coordinates   | Infrastructure planning |
+| Question | Test | Statistic | p-value |
+| --- | --- | --- | --- |
+| Does electric range differ between battery EVs and plug-in hybrids? | t-test | t = 477.954 | < 0.001 |
+| Is county associated with vehicle type? | Chi-square | χ² = 1031.238, df = 154 | < 0.001 |
 
----
+## Models
 
-## 🛠️ Technologies & Libraries
+| Target | Model | Features | Train/val/test | Test result |
+| --- | --- | --- | --- | --- |
+| Electric range | Linear Regression | Model Year, Make | 60/20/20 | R² = 0.776 (5-fold CV mean 0.775) |
+| Electric range | Random Forest with GridSearchCV | Model Year, Make | 80/20 train/test | **R² = 0.918** |
+| CAFV eligibility | Logistic Regression | Electric Range, Model Year | 60/20/20 | Accuracy = 99.86% |
+| CAFV eligibility | Logistic Regression with SMOTE | Electric Range, Model Year | 80/10/10 | Accuracy = 98.05% |
+| Battery EV vs plug-in hybrid | Logistic Regression with SMOTE | Electric Range, Model Year | 60/20/20 | Accuracy = 98.42% (5-fold CV mean 98.43%) |
 
-**Core Libraries**
+SMOTE was applied to the training data only. In the Random Forest, manufacturer had an importance of about 0.6 and model year about 0.4.
 
-```python
-pandas              # Data manipulation and analysis
-numpy               # Numerical computing
-matplotlib/seaborn  # Data visualization
-scikit-learn        # Machine learning algorithms
-plotly              # Interactive visualizations
-```
+### How to read these results
 
-**Specialized Tools**
+- **Electric range:** The split was random, so the same manufacturer and model year combinations appear in both training and test data. The R² shows how well the model captures range across known combinations. It does not show how well it would forecast future vehicles.
+- **CAFV eligibility:** Eligibility depends on battery range, and range is an input feature. The high accuracy mostly reflects that rule, so this model is a consistency check and not evidence of hard predictive skill.
+- **Vehicle type:** Battery EVs and plug-in hybrids differ sharply in electric range, which makes this an easy classification task.
 
-```python
-geopandas           # Geospatial data analysis
-folium              # Interactive mapping
-imblearn            # Handling class imbalance (SMOTE)
-statsmodels         # Statistical analysis
-```
+## Geospatial analysis
 
----
+Vehicle coordinates were parsed from the `Vehicle Location` field and mapped as interactive Folium heatmaps. Registered EVs are most concentrated around Seattle, Bellevue and Tacoma, with lower density in rural areas and in central and eastern Washington.
 
-## 📈 Key Findings & Results
+The data contains no charger locations, so the maps show where EVs are registered. They do not measure where charging capacity is missing, and that would need charging station data.
 
-### 1. Performance Analysis
+## Limitations
 
-* **Electric Range Evolution:** Steady improvement in EV ranges over time, with 91.8% accuracy in range prediction
-* **Manufacturer Leadership:** Tesla, Jaguar, and Polestar lead with highest average electric ranges
-* **Market Diversity:** Growing variety from budget-friendly to premium long-range vehicles
+- Rows with a range of 0 were removed. The dataset's eligibility field includes the label "Eligibility unknown as battery range has not been determined", and no unknown-eligibility rows remain after filtering, so vehicles without a recorded range are not represented.
+- The data is primarily Washington State registrations and may not generalize elsewhere.
+- Models use only two features each.
+- The range-tier scatter plot under "Clustering Models" in the notebook uses randomly generated sample data for illustration. It is not a clustering result.
 
-### 2. Predictive Modeling Results
+## Run it yourself
 
-| Model Type                 | Accuracy   | Key Insights                                        |
-| -------------------------- | ---------- | --------------------------------------------------- |
-| Electric Range Prediction  | R² = 0.918 | Model year and manufacturer are strong predictors   |
-| CAFV Eligibility           | 99.85%     | Electric range and model year determine eligibility |
-| BEV vs PHEV Classification | 98.42%     | Clear distinction based on range and year           |
-
-### 3. Statistical Analysis
-
-* **Hypothesis Testing:** Significant difference in electric range between BEVs and PHEVs (p < 0.001)
-* **Regional Patterns:** Strong association between geographic location and vehicle type preference
-* **CAFV Adoption:** 76% of vehicles eligible for clean air incentives
-
-### 4. Infrastructure Insights
-
-* **Urban Concentration:** High EV density in Seattle, Bellevue, and Tacoma
-* **Rural Gaps:** Central and eastern Washington require additional charging infrastructure
-* **Strategic Planning:** Heatmap analysis identifies optimal locations for new charging stations
-
----
-
-## 🗂️ Project Structure
-
-```
-├── data/
-│   ├── raw/                    # Original dataset
-│   └── processed/              # Cleaned and preprocessed data
-├── notebooks/
-│   ├── 01_data_preparation.ipynb
-│   ├── 02_exploratory_analysis.ipynb
-│   ├── 03_hypothesis_testing.ipynb
-│   ├── 04_predictive_modeling.ipynb
-│   ├── 05_classification.ipynb
-│   ├── 06_clustering.ipynb
-│   └── 07_infrastructure_planning.ipynb
-├── src/
-│   ├── data_processing.py
-│   ├── modeling.py
-│   ├── visualization.py
-│   └── utils.py
-├── results/
-│   ├── models/                 # Trained model files
-│   ├── figures/                 # Generated plots and maps
-│   └── reports/                 # Analysis summaries
-├── requirements.txt
-└── README.md
-```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-* Python 3.8 or higher
-* Jupyter Notebook or JupyterLab
-* Git
-
-### Installation
+The notebook was last run on Python 3.10.
 
 ```bash
-git clone https://github.com/your-username/ev-trends-prediction.git
-cd ev-trends-prediction
-python -m venv ev_env
-source ev_env/bin/activate  # On Windows: ev_env\Scripts\activate
-pip install -r requirements.txt
+pip install pandas numpy matplotlib seaborn scikit-learn imbalanced-learn statsmodels scipy plotly geopandas shapely folium jupyter
 ```
 
-### Dataset
+Download the dataset from Kaggle, then update the two hard-coded `pd.read_csv` paths in the notebook: one under "Importing Libraries and Datasets" for the raw CSV, and one under "Exploratory Data Analysis" for the generated `cleaned.csv`.
 
-Place your EV dataset in the `data/raw/` directory.
-
+```bash
+jupyter notebook Tutorial.ipynb
 ```
-Electric_Vehicle_Population_Data-2.csv
-```
-
-### Quick Start
-
-```python
-import pandas as pd
-from src.data_processing import clean_data
-from src.modeling import predict_electric_range, classify_vehicle_type
-from src.visualization import create_heatmap, plot_trends
-
-# Load dataset
-df = pd.read_csv('data/raw/Electric_Vehicle_Population_Data-2.csv')
-
-# Clean and preprocess
-df_clean = clean_data(df)
-
-# Predictions
-range_predictions = predict_electric_range(df_clean)
-vehicle_classifications = classify_vehicle_type(df_clean)
-
-# Visualizations
-plot_trends(df_clean)
-create_heatmap(df_clean)
-```
-
----
-
-## 📊 Analysis Workflow
-
-1. **Data Preparation**
-
-   * Handle missing values and outliers
-   * Feature engineering
-   * Data validation
-2. **EDA**
-
-   * Trend analysis
-   * Manufacturer comparisons
-   * Geographic adoption
-3. **Hypothesis Testing**
-
-   * t-tests, Chi-square, ANOVA
-4. **Predictive Modeling**
-
-   * Linear & Random Forest regression
-   * Cross-validation
-5. **Classification**
-
-   * Logistic regression + SMOTE
-   * Precision, recall, F1-score
-6. **Infrastructure Planning**
-
-   * Geospatial mapping
-   * Heatmaps & recommendations
-
----
-
-## 📸 Key Visualizations
-
-* **Electric Range Trends:** Box plots, line charts, bar charts
-* **Geographic Analysis:** Interactive maps, heatmaps, cluster maps
-* **Model Performance:** Confusion matrices, learning curves, feature importance
-
----
-
-## 🎯 Business Applications
-
-**For Manufacturers**
-
-* Product strategy
-* Performance benchmarking
-* R\&D focus
-
-**For Policymakers**
-
-* Optimize incentive programs
-* Charging infrastructure planning
-* EV growth forecasting
-
-**For Consumers**
-
-* Purchase decision support
-* Real-world range understanding
-* Charging access mapping
-
----
-
-## 📊 Model Performance Summary
-
-| Analysis Type          | Method                      | Key Metric    | Result    |
-| ---------------------- | --------------------------- | ------------- | --------- |
-| Range Prediction       | Random Forest               | R² Score      | 0.918     |
-| CAFV Eligibility       | Logistic Regression         | Accuracy      | 99.85%    |
-| Vehicle Classification | Logistic Regression + SMOTE | Accuracy      | 98.42%    |
-| Hypothesis Testing     | t-test                      | Significance  | p < 0.001 |
-| Cross Validation       | 5-Fold CV                   | Mean Accuracy | 98.7%     |
-
----
-
-## ⚠️ Limitations & Future Work
-
-**Current Limitations**
-
-* Limited geographic scope
-* Some feature limitations
-* Temporal constraints
-* Static infrastructure analysis
-
-**Future Enhancements**
-
-* Expand dataset coverage
-* Real-time data integration
-* Deep learning models
-* Economic & environmental impact analysis
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
-
-**Contribution Areas**
-
-* Data preprocessing
-* Additional ML models
-* Enhanced visualizations
-* Documentation updates
-
----
-
-## 📚 References & Resources
-
-* **National Renewable Energy Laboratory (NREL)**
-* **U.S. Department of Energy**
-* **International Energy Agency (IEA)**
-* **Scikit-learn Documentation**
-* **Geopandas User Guide**
-* **Folium Documentation**
-
----
-
-* ⭐ Star this repository if you find it useful
-
----
-
-*This project demonstrates the power of data science in accelerating the transition to sustainable transportation. Together, we can build a cleaner, more efficient future.*
