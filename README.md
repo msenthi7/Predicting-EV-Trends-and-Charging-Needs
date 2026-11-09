@@ -68,7 +68,6 @@ The data contains no charger locations, so the maps show where EVs are registere
 - Rows with a range of 0 were removed. The dataset's eligibility field includes the label "Eligibility unknown as battery range has not been determined", and no unknown-eligibility rows remain after filtering, so vehicles without a recorded range are not represented.
 - The data is primarily Washington State registrations and may not generalize elsewhere.
 - Models use only two features each.
-- The range-tier scatter plot under "Clustering Models" in the notebook uses randomly generated sample data for illustration. It is not a clustering result.
 
 ## Run it yourself
 
